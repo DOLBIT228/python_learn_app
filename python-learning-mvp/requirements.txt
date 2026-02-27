@@ -1,0 +1,11 @@
+# Core framework
+streamlit
+
+# Database
+sqlalchemy
+
+# AI
+openai
+
+# Utilities
+python-dotenv

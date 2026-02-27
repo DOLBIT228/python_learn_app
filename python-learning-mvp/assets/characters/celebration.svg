@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+  <rect width="220" height="220" rx="16" fill="#fffbe8"/>
+  <circle cx="110" cy="95" r="55" fill="#ffc446"/>
+  <circle cx="90" cy="88" r="7" fill="#111"/>
+  <circle cx="130" cy="88" r="7" fill="#111"/>
+  <path d="M82 112 Q110 140 138 112" stroke="#6a4c00" stroke-width="6" fill="none"/>
+  <text x="40" y="40" font-size="22">✨</text>
+  <text x="170" y="45" font-size="22">🎉</text>
+  <text x="110" y="195" text-anchor="middle" font-size="16" fill="#6a4c00">Byte • celebration</text>
+</svg>
