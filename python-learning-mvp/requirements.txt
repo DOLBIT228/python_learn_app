@@ -1,0 +1,5 @@
+# Streamlit MVP dependencies (initial scaffold)
+streamlit
+sqlalchemy
+pydantic
+python-dotenv
