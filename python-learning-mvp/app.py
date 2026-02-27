@@ -19,7 +19,10 @@ from models import Exercise, Lesson, Module, User
 from services.gamification_service import complete_lesson, process_correct_answer, process_wrong_answer
 from services.lesson_service import get_exercises, get_lessons, get_modules, validate_answer
 from services.leaderboard_service import get_top_users
+from ui.character import render_character
 from ui.character_state_manager import CharacterStateManager
+from ui.layout import render_layout
+from ui.theme import inject_global_styles
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -36,8 +39,11 @@ def _get_character_manager() -> CharacterStateManager:
 
 def _render_character() -> None:
     manager = _get_character_manager()
-    st.markdown("### 🤖 Byte")
-    st.markdown(manager.get_svg_content(), unsafe_allow_html=True)
+    render_character(manager.current_state.value)
+
+
+def _xp_pop_animation(xp_value: int) -> None:
+    st.markdown(f'<div class="ui-xp-pop">+{xp_value} XP</div>', unsafe_allow_html=True)
 
 
 def _get_or_create_user(email: str) -> User:
@@ -134,8 +140,25 @@ def _render_home_page(user: User) -> None:
         return
 
     st.subheader("Modules")
-    for module in modules:
-        if st.button(f"Open: {module.title}", key=f"open_module_{module.id}"):
+    for index, module in enumerate(modules):
+        is_unlocked = index == 0
+        card_class = "ui-card" if is_unlocked else "ui-card ui-card-locked"
+        st.markdown(
+            (
+                f'<div class="{card_class}">'
+                f'<p class="ui-title">{module.title}</p>'
+                f'<p class="ui-muted">{"Unlocked" if is_unlocked else "Locked"}</p>'
+                "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
+        progress_value = 100 if is_unlocked else 0
+        st.progress(progress_value)
+        if st.button(
+            "Open module" if is_unlocked else "Locked",
+            key=f"open_module_{module.id}",
+            disabled=not is_unlocked,
+        ):
             st.session_state.selected_module_id = module.id
             st.session_state.page = "lesson"
             st.rerun()
@@ -257,14 +280,30 @@ def _render_exercise_page(user: User) -> None:
 
     _get_character_manager().set_loading()
     exercise = exercises[idx]
+    result_state_key = f"exercise_result_{idx}"
+    answer_state_key = f"answer_{idx}"
     st.subheader(f"Exercise {idx + 1}/{len(exercises)}")
-    st.write(exercise.question)
+    st.markdown(f'<div class="ui-question">{exercise.question}</div>', unsafe_allow_html=True)
+
+    previous_result = st.session_state.get(result_state_key)
+    if previous_result:
+        if previous_result["is_correct"]:
+            st.markdown('<div class="ui-answer-correct">✅ Correct answer!</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="ui-answer-incorrect">❌ Невірно. Спробуємо наступне завдання.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="ui-explanation"><b>Explanation:</b><br>{exercise.explanation}</div>', unsafe_allow_html=True)
+        if st.button("Next", key=f"next_{idx}"):
+            st.session_state.exercise_index = idx + 1
+            st.session_state.pop(result_state_key, None)
+            st.session_state.pop(answer_state_key, None)
+            st.rerun()
+        return
 
     if exercise.type == "MULTIPLE_CHOICE":
         options = json.loads(exercise.options_json or "[]")
-        user_answer = st.radio("Виберіть відповідь", options=options, key=f"answer_{idx}")
+        user_answer = st.radio("Виберіть відповідь", options=options, key=answer_state_key, label_visibility="collapsed")
     else:
-        user_answer = st.text_input("Ваша відповідь", key=f"answer_{idx}")
+        user_answer = st.text_input("Ваша відповідь", key=answer_state_key)
 
     if st.button("Submit answer", key=f"submit_{idx}"):
         is_correct = validate_answer(exercise, user_answer)
@@ -280,7 +319,8 @@ def _render_exercise_page(user: User) -> None:
             result = process_correct_answer(live_user, exercise.difficulty)
             st.session_state.lesson_correct = st.session_state.get("lesson_correct", 0) + 1
             _get_character_manager().set_correct_answer()
-            st.success(f"✅ Correct! +{result['xp_gained']} XP")
+            st.success("✅ Correct!")
+            _xp_pop_animation(result["xp_gained"])
         else:
             result = process_wrong_answer(live_user)
             _get_character_manager().set_error()
@@ -298,7 +338,10 @@ def _render_exercise_page(user: User) -> None:
                 st.rerun()
             return
 
-        st.session_state.exercise_index = idx + 1
+        st.session_state[result_state_key] = {
+            "is_correct": is_correct,
+            "xp_gained": result.get("xp_gained", 0),
+        }
         st.rerun()
 
     if st.button("Back to Lesson Page"):
@@ -309,6 +352,7 @@ def _render_exercise_page(user: User) -> None:
 
 def main() -> None:
     st.set_page_config(page_title="Python Learning MVP", page_icon="🐍", layout="centered")
+    inject_global_styles()
     _seed_demo_content()
 
     if "page" not in st.session_state:
@@ -318,14 +362,17 @@ def main() -> None:
     if st.session_state.page != "login" and user is None:
         st.session_state.page = "login"
 
-    if st.session_state.page == "login":
-        _render_login_page()
-    elif st.session_state.page == "home" and user:
-        _render_home_page(user)
-    elif st.session_state.page == "lesson" and user:
-        _render_lesson_page(user)
-    elif st.session_state.page == "exercise" and user:
-        _render_exercise_page(user)
+    def _render_page_content() -> None:
+        if st.session_state.page == "login":
+            _render_login_page()
+        elif st.session_state.page == "home" and user:
+            _render_home_page(user)
+        elif st.session_state.page == "lesson" and user:
+            _render_lesson_page(user)
+        elif st.session_state.page == "exercise" and user:
+            _render_exercise_page(user)
+
+    render_layout(_render_page_content)
 
 
 if __name__ == "__main__":
