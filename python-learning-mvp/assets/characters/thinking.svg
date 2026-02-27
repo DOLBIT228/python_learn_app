@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+  <rect width="220" height="220" rx="16" fill="#f4f2ff"/>
+  <circle cx="110" cy="95" r="55" fill="#8c7dff"/>
+  <circle cx="90" cy="90" r="7" fill="#111"/>
+  <circle cx="130" cy="90" r="7" fill="#111"/>
+  <circle cx="152" cy="60" r="6" fill="#fff"/>
+  <circle cx="164" cy="48" r="8" fill="#fff"/>
+  <text x="110" y="195" text-anchor="middle" font-size="16" fill="#372f73">Byte • thinking</text>
+</svg>
